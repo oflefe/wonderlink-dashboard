@@ -1,4 +1,7 @@
 import { BigQuery } from "@google-cloud/bigquery";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const bigQuery = new BigQuery();
 
@@ -44,7 +47,7 @@ export async function fetchUserData(): Promise<any[]> {
 
   const [rows] = await bigQuery.query({
     query,
-    location: "US", // Adjust based on your dataset location
+    location: "US", 
   });
 
   return rows;
@@ -76,7 +79,7 @@ export async function fetchSessionData(): Promise<any[]> {
   const bigQuery = new BigQuery();
   const [rows] = await bigQuery.query({
     query,
-    location: "US", // Adjust based on your dataset location
+    location: "US", 
   });
 
   return rows;

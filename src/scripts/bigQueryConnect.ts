@@ -1,5 +1,7 @@
 import { BigQuery } from "@google-cloud/bigquery";
+import dotenv from "dotenv";
 
+dotenv.config();
 
 const bigQuery = new BigQuery();
 
