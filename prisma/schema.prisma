@@ -1,0 +1,27 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  user_pseudo_id    String    @id
+  install_date      DateTime
+  install_timestamp BigInt
+  platform          String
+  country           String
+  Session           Session[]
+}
+
+model Session {
+  session_id        String   @id
+  user_pseudo_id    String
+  session_date      DateTime
+  session_timestamp BigInt
+  User              User     @relation(fields: [user_pseudo_id], references: [user_pseudo_id])
+
+  @@index([user_pseudo_id])
+}
