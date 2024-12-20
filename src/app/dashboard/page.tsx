@@ -12,6 +12,9 @@ import {
   ResponsiveContainer,
   Bar,
   BarChart,
+  Cell,
+  Pie,
+  PieChart,
 } from "recharts";
 
 interface RetentionMetrics {
@@ -23,29 +26,49 @@ interface RetentionMetrics {
   platform: string;
 }
 
+import "../../styles/globals.css";
+
 export default function Dashboard() {
-  const [metrics, setMetrics] = useState<RetentionMetrics[]>([]);
+  const [installDateMetrics, setInstallDateMetrics] = useState<
+    RetentionMetrics[]
+  >([]);
   const [countryMetrics, setCountryMetrics] = useState([]);
   const [platformMetrics, setPlatformMetrics] = useState([]);
+  const [retentionData, setRetentionData] = useState<{
+    d1Retention: number;
+    d7Retention: number;
+    d30Retention: number;
+  } | null>(null);
 
   const [filters, setFilters] = useState({
-    installDate: "",
     country: "",
     platform: "",
+    installDateStart: "",
+    installDateEnd: "",
   });
+
+  async function fetchOverall() {
+    const query = new URLSearchParams(filters as any).toString();
+    const res = await fetch(`/api/overallMetrics?${query}`);
+    const retentionData = await res.json();
+    setRetentionData(retentionData);
+  }
 
   async function fetchMetrics() {
     const installDateRes = await fetch(`/api/dateMetrics`);
     const countryRes = await fetch(`/api/countryMetrics`);
-    //const platformRes = await fetch(`/api/platformMetrics`);
+    const retentionRes = await fetch("api/overallMetrics");
+    const retentionData = await retentionRes.json();
+    const platformRes = await fetch(`/api/platformMetrics`);
 
     const countryData = await countryRes.json();
-    //const platformData = await platformRes.json();
+    const platformData = await platformRes.json();
     const installDateData = await installDateRes.json();
 
-    setMetrics(installDateData);
+    setInstallDateMetrics(installDateData);
     setCountryMetrics(countryData);
-    //setPlatformMetrics(platformData);
+    setRetentionData(retentionData);
+    setPlatformMetrics(platformData);
   }
 
   useEffect(() => {
@@ -56,41 +79,101 @@ export default function Dashboard() {
     setFilters({ ...filters, [e.target.name]: e.target.value });
   };
 
-  const chartData = metrics.map((metric) => ({
+  if (!retentionData) return <p>Loading...</p>;
+
+  const chartData = installDateMetrics.map((metric) => ({
     installDate: metric.installDate,
-    d1Retention: metric.d1Retention * 100, // Convert to percentage
-    d7Retention: metric.d7Retention * 100, // Convert to percentage
-    d30Retention: metric.d30Retention * 100, // Convert to percentage
+    d1Retention: metric.d1Retention * 100,
+    d7Retention: metric.d7Retention * 100,
+    d30Retention: metric.d30Retention * 100,
   }));
+
+  const pieData = [
+    { name: "D1 Retention", value: retentionData.d1Retention },
+    { name: "D7 Retention", value: retentionData.d7Retention },
+    { name: "D30 Retention", value: retentionData.d30Retention },
+  ];
+
+  const COLORS = ["#007bff", "#28a745", "#dc3545"];
 
   return (
     <div className="dashboard">
-      <h1>Retention Metrics</h1>
-      <div>
-        <label>
-          Country Filter:
-          <input
-            type="text"
-            value={filters.country}
-            onChange={handleFilterChange}
-          />
-        </label>
-        <label>
-          Platform Filter:
-          <input
-            type="text"
-            value={filters.platform}
-            onChange={handleFilterChange}
-          />
-        </label>
+      <div className="retention-pie-chart">
+        <h1>Overall Retention Rates</h1>
+        <div className="filters">
+          <div>
+            <label>Country</label>
+            <input
+              type="text"
+              name="country"
+              value={filters.country}
+              onChange={handleFilterChange}
+              placeholder="e.g., US"
+            />
+          </div>
+          <div>
+            <label>Platform</label>
+            <input
+              type="text"
+              name="platform"
+              value={filters.platform}
+              onChange={handleFilterChange}
+              placeholder="e.g., ios"
+            />
+          </div>
+          <div>
+            <label>Install Date Start</label>
+            <input
+              type="date"
+              name="installDateStart"
+              value={filters.installDateStart}
+              onChange={handleFilterChange}
+            />
+          </div>
+          <div>
+            <label>Install Date End</label>
+            <input
+              type="date"
+              name="installDateEnd"
+              value={filters.installDateEnd}
+              onChange={handleFilterChange}
+            />
+          </div>
+          <button onClick={fetchOverall}>Apply Filters</button>
+        </div>
+        <ResponsiveContainer width="100%" height={400}>
+          <PieChart>
+            <Pie
+              data={pieData}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              outerRadius={150}
+              fill="#8884d8"
+              label={({ name, value }) => `${name}: ${value.toFixed(2)}%`}
+            >
+              {pieData.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={COLORS[index % COLORS.length]}
+                />
+              ))}
+            </Pie>
+            <Tooltip />
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
       </div>
+
+      <h1>Retention Vs Install Date</h1>
       <div className="chart-container scrollable">
         <ResponsiveContainer width="100%" height={400}>
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="installDate" />
-            <YAxis />
-            <Tooltip />
+            <YAxis tickFormatter={(value) => `${value}%`} />
+            <Tooltip formatter={(value: number) => `${value.toFixed(2)}%`} />
             <Legend />
             <Line
               type="monotone"

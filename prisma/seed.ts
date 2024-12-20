@@ -2,10 +2,14 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-import userData from "../data/user-data.json";
 import sessionData from "../data/session-data.json";
+import {
+  fetchSessionData,
+  fetchUserData,
+} from "../src/services/bigQueryService";
 
 async function seedUsers() {
+  const userData = await fetchUserData();
   await prisma.user.createMany({
     data: userData.map((user: any) => ({
       user_pseudo_id: user.user_pseudo_id,
@@ -24,18 +28,54 @@ async function seedUsers() {
   console.log("UserTable data seeded.");
 }
 
-async function seedSession() {
-  const validUserPseudoIds = new Set(
-    userData.map((user: any) => user.user_pseudo_id)
-  );
+async function upsertUsers() {
+  try {
+    const userData = await fetchUserData();
 
-  const filteredSessionTableData = sessionData.filter((session: any) =>
-    validUserPseudoIds.has(session.user_pseudo_id)
-  );
+    const transformedData = userData.map((user) => ({
+      user_pseudo_id: user.user_pseudo_id,
+      install_date: new Date(
+        `${user.install_date.substring(0, 4)}-${user.install_date.substring(
+          4,
+          6
+        )}-${user.install_date.substring(6, 8)}`
+      ),
+      install_timestamp: BigInt(user.install_timestamp),
+      platform: user.platform,
+      country: user.country,
+    }));
 
-  const sessionJson = filteredSessionTableData as any[];
-  await prisma.session.createMany({
-    data: sessionJson.map((session: any) => ({
+    await prisma.user.createMany({
+      data: transformedData,
+      skipDuplicates: true, // Optional: Avoid errors if duplicates exist
+    });
+    console.log("User table seeded successfully!");
+  } catch (error) {
+    console.error("Error seeding user table:", error);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+export async function seedSessionTable() {
+  try {
+    // Fetch session data from BigQuery
+    const sessionData = await fetchSessionData();
+
+    const validUserIds = new Set(
+      (
+        await prisma.user.findMany({
+          select: { user_pseudo_id: true },
+        })
+      ).map((user) => user.user_pseudo_id)
+    );
+
+    const filteredSessionData = sessionData.filter((session) =>
+      validUserIds.has(session.user_pseudo_id)
+    );
+
+    // Transform the data for Prisma
+    const transformedData = filteredSessionData.map((session) => ({
       session_id: session.session_id,
       user_pseudo_id: session.user_pseudo_id,
       session_date: new Date(
@@ -48,19 +88,26 @@ async function seedSession() {
         )}-${session.session_date.substring(6, 8)}`
       ),
       session_timestamp: BigInt(session.session_timestamp),
-    })),
-  });
+    }));
 
-  console.log("SessionTable data seeded.");
+    await prisma.session.createMany({
+      data: transformedData,
+      skipDuplicates: true, // Optional: Avoid errors if duplicates exist
+    });
+
+    console.log("Session table seeded successfully with createMany!");
+  } catch (error) {
+    console.error("Error seeding session table:", error);
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
 async function main() {
-  // Load user_table data from JSON
-
-  // Load session_table data from JSON;
-  await seedSession();
-
-  console.log("SessionTable data seeded.");
+  // await prisma.session.deleteMany();
+  // await prisma.user.deleteMany();
+  // await upsertUsers();
+  await seedSessionTable();
 }
 
 main()
