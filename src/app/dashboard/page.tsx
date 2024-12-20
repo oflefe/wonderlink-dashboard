@@ -66,6 +66,24 @@ export default function Dashboard() {
   return (
     <div className="dashboard">
       <h1>Retention Metrics</h1>
+      <div>
+        <label>
+          Country Filter:
+          <input
+            type="text"
+            value={filters.country}
+            onChange={handleFilterChange}
+          />
+        </label>
+        <label>
+          Platform Filter:
+          <input
+            type="text"
+            value={filters.platform}
+            onChange={handleFilterChange}
+          />
+        </label>
+      </div>
       <div className="chart-container scrollable">
         <ResponsiveContainer width="100%" height={400}>
           <LineChart data={chartData}>

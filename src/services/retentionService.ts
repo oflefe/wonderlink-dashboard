@@ -10,12 +10,21 @@ export interface RetentionMetricsByDate {
 }
 
 export async function calculateRetentionMetricsByInstallDate(filters?: {
-  installDate?: string;
+  platform?: string;
   country?: string;
 }): Promise<RetentionMetricsByDate[]> {
+  let userFilters: any = {};
+  if (filters?.country) {
+    userFilters.country.contains = filters.country;
+  }
+  if (filters?.platform) {
+    userFilters.platform.contains = filters.platform;
+  }
+
   const installDates = await prisma.user.groupBy({
     by: ["install_date"],
     _count: true,
+    where: userFilters,
     orderBy: {
       install_date: "asc",
     },
