@@ -55,3 +55,5 @@ Run the development server:
 ```bash
 npm run dev
 ```
+
+Navigate to localhost:3000/dashboard
