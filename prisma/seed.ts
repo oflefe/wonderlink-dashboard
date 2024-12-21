@@ -106,7 +106,7 @@ export async function seedSessionTable() {
 async function main() {
   // await prisma.session.deleteMany();
   // await prisma.user.deleteMany();
-  // await upsertUsers();
+  await upsertUsers();
   await seedSessionTable();
 }
 
